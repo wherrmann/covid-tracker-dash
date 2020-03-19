@@ -8,90 +8,35 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 
-pio.templates.default = "plotly_white"
+from metadata.state_iso_codes import state_mapping
 
-external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-
-app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+app = dash.Dash(__name__)
 
 server = app.server
 
-state_mapping = {
-    "AL": "Alabama",
-    "AK": "Alaska",
-    "AS": "American Samoa",
-    "AZ": "Arizona",
-    "AR": "Arkansas",
-    "CA": "California",
-    "CO": "Colorado",
-    "CT": "Connecticut",
-    "DE": "Delaware",
-    "DC": "District Of Columbia",
-    "FM": "Federated States Of Micronesia",
-    "FL": "Florida",
-    "GA": "Georgia",
-    "GU": "Guam",
-    "HI": "Hawaii",
-    "ID": "Idaho",
-    "IL": "Illinois",
-    "IN": "Indiana",
-    "IA": "Iowa",
-    "KS": "Kansas",
-    "KY": "Kentucky",
-    "LA": "Louisiana",
-    "ME": "Maine",
-    "MH": "Marshall Islands",
-    "MD": "Maryland",
-    "MA": "Massachusetts",
-    "MI": "Michigan",
-    "MN": "Minnesota",
-    "MS": "Mississippi",
-    "MO": "Missouri",
-    "MT": "Montana",
-    "NE": "Nebraska",
-    "NV": "Nevada",
-    "NH": "New Hampshire",
-    "NJ": "New Jersey",
-    "NM": "New Mexico",
-    "NY": "New York",
-    "NC": "North Carolina",
-    "ND": "North Dakota",
-    "MP": "Northern Mariana Islands",
-    "OH": "Ohio",
-    "OK": "Oklahoma",
-    "OR": "Oregon",
-    "PW": "Palau",
-    "PA": "Pennsylvania",
-    "PR": "Puerto Rico",
-    "RI": "Rhode Island",
-    "SC": "South Carolina",
-    "SD": "South Dakota",
-    "TN": "Tennessee",
-    "TX": "Texas",
-    "UT": "Utah",
-    "VT": "Vermont",
-    "VI": "Virgin Islands",
-    "VA": "Virginia",
-    "WA": "Washington",
-    "WV": "West Virginia",
-    "WI": "Wisconsin",
-    "WY": "Wyoming"
-}
-
 app.layout = html.Div(
     [
-        html.H1("Demo: COVID-19"),
+        html.H1("COVID-19 Tracker Dash"),
         html.Div(
             [
                 dcc.Dropdown(
                     id="state_dropdown",
-                    value='NY',
                     options=[{"label": label, "value": val} for val, label in state_mapping.items()],
                 )
             ],
             className="app__dropdown",
         ),
-        dcc.Graph(id="graph")
+        dcc.Graph(id="graph"),
+        html.Footer(
+            [
+                html.Strong(dcc.Link('Created', href="https://github.com/wherrmann/covid-tracker-dash")),
+                " by ",
+                html.Strong(dcc.Link('herrmannwh', href="https://twitter.com/herrmannwh")),
+                " with data from the ",
+                html.Strong(dcc.Link('COVID Tracking Project', href="https://covidtracking.com")),
+                "."
+            ]
+        )
     ]
 )
 
@@ -101,24 +46,24 @@ def make_figure(value):
     url = 'https://covidtracking.com/api/states/daily?state={}'.format(state)
     r = requests.get(url)
     data = r.json()
+
     df = pd.DataFrame(data)
     df['date'] = pd.to_datetime(df['date'],format = '%Y%m%d')
     df = df.sort_values(by='date')
-    # df['posNeg'] = df['positive'] + df['negative']
-    # df['new_posNeg'] = df['posNeg'].diff()
-    # df['new_death'] = df['death'].diff()
+
     df['new_positive'] = df['positive'].diff()
-    # df['new_total'] = df['total'].diff()
-    # df['fatality_rate'] = df['death']/df['positive']
-    # df['positive_rate'] = df['positive']/df['posNeg']
-    # df['daily_positive_rate'] = df['new_positive']/df['new_posNeg']
-    # df['daily_fatality_rate'] = df['new_death']/df['new_positive']
-    return px.bar(df,
+    df['new_total'] = df['total'].diff()
+    df['positive_rate'] = df['positive']/df['posNeg']
+    df['daily_positive_rate'] = df['new_positive']/df['new_posNeg']
+
+    fig = px.bar(df,
         x="date",
         y="new_positive",
-        title ="Daily New {} Positive Cases".format(state_mapping[state]),
-        labels = {'x':'Date','y':'Confirmed Cases'}
+        title ="Daily New Cases - {}".format(state_mapping[state])
     )
+    fig.update_xaxes(title_text='Date')
+    fig.update_yaxes(title_text='Confirmed Cases')
+    return fig
 
 if __name__ == '__main__':
     app.run_server(debug=True)
