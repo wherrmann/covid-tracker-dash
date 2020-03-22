@@ -62,7 +62,6 @@ cache = Cache(app.server, config={
 
 TIMEOUT = 3600
 
-@cache.memoize(timeout=TIMEOUT)
 def get_data(endpoint):
     """
     Retrieve foundational data from covidtracking.com.
@@ -73,6 +72,7 @@ def get_data(endpoint):
     data = r.json()
     return data
 
+@cache.memoize(timeout=TIMEOUT)
 def make_bar_figures(endpoint, region):
     """
     Makes three figure plotly subplot with these metrics:
@@ -141,6 +141,7 @@ def make_bar_figures(endpoint, region):
     )
     return fig
 
+@cache.memoize(timeout=TIMEOUT)
 def make_map_figures():
     """
     Makes three choropleth mapbox figures of the US for these metrics:
