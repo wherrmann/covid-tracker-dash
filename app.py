@@ -30,7 +30,9 @@ server = app.server
 
 app.layout = html.Div(
     [
-        html.H1("COVID-19 Tracker Dash"),
+        html.Br(),
+        html.Center(html.H1("COVID-19 Tracker Dash")),
+        html.Br(),
         dcc.Tabs(
             id='tabs-covid',
             value='us',
@@ -40,7 +42,8 @@ app.layout = html.Div(
                 dcc.Tab(label='Maps', value='maps')
             ]
         ),
-        html.Div(id='tabs-content'),
+        html.Br(),
+        dcc.Loading(id="loading-1", children=[html.Div(id='tabs-content')], type="graph"),
         html.Br(),
         html.Footer(
             [
@@ -52,7 +55,8 @@ app.layout = html.Div(
                 "."
             ]
         )
-    ]
+    ],
+    className="container"
 )
 
 cache = Cache(app.server, config={
@@ -225,14 +229,18 @@ def render_content(tab):
         ])
     elif tab == 'states':
         content = html.Div([
+            html.Br(),
+            html.Label("State",form="stateForm",className="app__dropdown"),
             html.Div(
                 [
+
                     dcc.Dropdown(
                         id="state_dropdown",
                         value="NY",
                         options=[{"label": label, "value": val} for val, label in STATE_MAPPING.items()],
                     )
                 ],
+                id="stateForm",
                 className="app__dropdown"
             ),
             dcc.Graph(id='state-graphs')
