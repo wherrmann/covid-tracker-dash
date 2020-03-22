@@ -5,6 +5,10 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 
+import os
+import time
+from flask_caching import Cache
+
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -51,6 +55,14 @@ app.layout = html.Div(
     ]
 )
 
+cache = Cache(app.server, config={
+    'CACHE_TYPE': 'filesystem',
+    'CACHE_DIR': 'cache-directory'
+})
+
+TIMEOUT = 3600
+
+@cache.memoize(timeout=TIMEOUT)
 def get_data(endpoint):
     """
     Retrieve foundational data from covidtracking.com.
