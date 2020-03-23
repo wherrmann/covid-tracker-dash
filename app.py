@@ -230,7 +230,7 @@ def make_map_figures():
         layout=layout_dict
     )
     nonnull_df = df[df['tests_per_million'].notna()]
-    fig2 = px.choropleth_mapbox(nonnull_df[df['grade']=='A'],
+    fig2 = px.choropleth_mapbox(nonnull_df[df['grade']!='D'],
         title ="Tests Per Million People",
         color="tests_per_million",
         **standard_choropleth_mapbox_args
@@ -251,9 +251,10 @@ def make_map_figures():
         dcc.Graph(id='graph-map-1',figure=fig1),
         dcc.Graph(id='graph-map-2',figure=fig2),
         dcc.Graph(id='graph-map-3',figure=fig3),
-        html.P(["Note: some metrics are not calculated for states with less than an 'A' ",
-         dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-gradedata quality rating.")
-        ])
+            html.P(["Note: positive rates are not calculated for states with less than an 'A' ",
+             dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-gradedata quality rating."),
+             " Tests administered are not shown for states with less than a 'C'."
+            ])
     ])
     return graphs_div
 
