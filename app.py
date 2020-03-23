@@ -252,7 +252,7 @@ def make_map_figures():
         dcc.Graph(id='graph-map-2',figure=fig2),
         dcc.Graph(id='graph-map-3',figure=fig3),
             html.P(["Note: positive rates are not calculated for states with less than an 'A' ",
-             dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-gradedata quality rating."),
+             dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-grade"),
              " Tests administered are not shown for states with less than a 'C'."
             ])
     ])
@@ -283,7 +283,7 @@ def render_content(tab):
             ),
             dcc.Graph(id='state-graphs'),
             html.P(["Note: positive rates are not calculated for states with less than an 'A' ",
-             dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-gradedata quality rating."),
+             dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-grade"),
              " Tests administered are not shown for states with less than a 'C'."
             ])
         ])
