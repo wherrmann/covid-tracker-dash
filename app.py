@@ -24,6 +24,28 @@ BASE_API_URL = 'https://covidtracking.com/api/'
 
 app = dash.Dash(__name__)
 
+app.index_string = '''
+<!DOCTYPE html>
+<html lang="en">
+<html>
+    <head>
+        {%metas%}
+        <title>COVID-19 Tracker Dash</title>
+        <link rel="icon" href="https://emojipedia-us.s3.dualstack.us-west-1.amazonaws.com/thumbs/240/google/241/world-map_1f5fa.png">
+        {%css%}
+        <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+    </head>
+    <body>
+        {%app_entry%}
+        <footer>
+            {%config%}
+            {%scripts%}
+            {%renderer%}
+        </footer>
+    </body>
+</html>
+'''
+
 app.config.suppress_callback_exceptions = True
 
 server = app.server
@@ -77,14 +99,22 @@ def get_data(endpoint):
     return data
 
 @cache.memoize(timeout=TIMEOUT)
-def make_bar_figures(endpoint, region):
+def make_bar_figures(region):
     """
     Makes three figure plotly subplot with these metrics:
      - Daily new cases
      - Daily new tests administered
      - Aggregate positive test rate
     """
-    data = get_data(endpoint)
+
+    if region == 'US':
+        data = get_data('us/daily')
+        data_grade = 'A'
+    else:
+        data = get_data('states/daily?state={}'.format(region))
+        data_grade = get_data('states?state={}'.format(region))['grade']
+        region = STATE_MAPPING[region]
+
     df = pd.DataFrame(data)
     df['date'] = pd.to_datetime(df['date'],format = '%Y%m%d')
     df = df.sort_values(by='date')
@@ -117,24 +147,26 @@ def make_bar_figures(endpoint, region):
         row=1,
         col=1
     )
-    fig.add_trace(
-        go.Bar(
-            x=df['date'],
-            y=df['new_total'],
-            name=""
-        ),
-        row=2,
-        col=1
-    )
-    fig.add_trace(
-        go.Bar(
-            x=df['date'],
-            y=df['positive_rate'],
-            name=""
-        ),
-        row=3,
-        col=1
-    )
+    if data_grade in ['A','B','C']:
+        fig.add_trace(
+            go.Bar(
+                x=df['date'],
+                y=df['new_total'],
+                name=""
+            ),
+            row=2,
+            col=1
+        )
+    if data_grade == 'A':
+        fig.add_trace(
+            go.Bar(
+                x=df['date'],
+                y=df['positive_rate'],
+                name=""
+            ),
+            row=3,
+            col=1
+        )
     fig.update_yaxes(title_text="Confirmed Cases", row=1, col=1)
     fig.update_yaxes(title_text="Tests Administered", row=2, col=1)
     fig.update_yaxes(title_text="Positive Test Rate", tickformat = ',.0%', row=3, col=1)
@@ -184,9 +216,9 @@ def make_map_figures():
         'color_continuous_scale' : "viridis_r",
         'opacity' : 0.5,
         'center' : {"lat": 37.0902, "lon": -95.7129},
-        'zoom' : 3,
+        'zoom' : 2.5,
         'mapbox_style' : "carto-positron",
-        'height' : 800
+        'height' : 600
     }
 
     fig1 = px.choropleth_mapbox(df[df['positives_per_million'].notna()],
@@ -197,7 +229,8 @@ def make_map_figures():
     fig1.update(
         layout=layout_dict
     )
-    fig2 = px.choropleth_mapbox(df[df['tests_per_million'].notna()],
+    nonnull_df = df[df['tests_per_million'].notna()]
+    fig2 = px.choropleth_mapbox(nonnull_df[df['grade']=='A'],
         title ="Tests Per Million People",
         color="tests_per_million",
         **standard_choropleth_mapbox_args
@@ -205,7 +238,8 @@ def make_map_figures():
     fig2.update(
         layout=layout_dict
     )
-    fig3 = px.choropleth_mapbox(df[df['positives_per_hundred_tests'].notna()],
+    nonnull_df = df[df['positives_per_hundred_tests'].notna()]
+    fig3 = px.choropleth_mapbox(nonnull_df[df['grade']=='A'],
         title ="Positives per Hundred Tests Administered",
         color="positives_per_hundred_tests",
         **standard_choropleth_mapbox_args
@@ -216,7 +250,10 @@ def make_map_figures():
     graphs_div = html.Div([
         dcc.Graph(id='graph-map-1',figure=fig1),
         dcc.Graph(id='graph-map-2',figure=fig2),
-        dcc.Graph(id='graph-map-3',figure=fig3)
+        dcc.Graph(id='graph-map-3',figure=fig3),
+        html.P(["Note: some metrics are not calculated for states with less than an 'A' ",
+         dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-gradedata quality rating.")
+        ])
     ])
     return graphs_div
 
@@ -225,7 +262,7 @@ def make_map_figures():
 def render_content(tab):
     if tab == 'us':
         return html.Div([
-            dcc.Graph(id='graph-us',figure=make_bar_figures('us/daily','US'))
+            dcc.Graph(id='graph-us',figure=make_bar_figures('US'))
         ])
     elif tab == 'states':
         content = html.Div([
@@ -243,7 +280,11 @@ def render_content(tab):
                 id="stateForm",
                 className="app__dropdown"
             ),
-            dcc.Graph(id='state-graphs')
+            dcc.Graph(id='state-graphs'),
+            html.P(["Note: positive rates are not calculated for states with less than an 'A' ",
+             dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-gradedata quality rating."),
+             " Tests administered are not shown for states with less than a 'C'."
+            ])
         ])
         return content
     elif tab == 'maps':
@@ -251,7 +292,7 @@ def render_content(tab):
 
 @app.callback(Output("state-graphs", "figure"), [Input("state_dropdown", "value")])
 def make_figure(value):
-    return make_bar_figures('states/daily?state={}'.format(value),STATE_MAPPING[value])
+    return make_bar_figures(value)
 
 if __name__ == '__main__':
     app.run_server(debug=True)
