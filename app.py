@@ -8,6 +8,8 @@ from plotly.subplots import make_subplots
 import os
 import time
 from flask_caching import Cache
+from flask import redirect, request
+from urllib.parse import urlparse, urlunparse
 
 import dash
 import dash_core_components as dcc
@@ -104,7 +106,7 @@ def make_bar_figures(region):
     Makes three figure plotly subplot with these metrics:
      - Daily new cases
      - Daily new tests administered
-     - Aggregate positive test rate
+     - Daily positive test rate
     """
 
     if region == 'US':
@@ -125,7 +127,8 @@ def make_bar_figures(region):
 
     df['new_positive'] = df['positive'].diff()
     df['new_total'] = df['total'].diff()
-    df['positive_rate'] = df['positive']/df['posNeg']
+    df['new_posNeg'] = df['posNeg'].diff()
+    df['positive_rate'] = df['new_positive']/df['new_posNeg']
 
     fig = make_subplots(
         rows=3,
@@ -133,7 +136,7 @@ def make_bar_figures(region):
         subplot_titles=(
             "Daily New Cases - {}".format(region),
             "Daily New Tests Administered - {}".format(region),
-            "Positive Test Rate, Aggregate - {}".format(region)
+            "Daily Positive Test Rate - {}".format(region)
         ),
         x_title="Date",
         vertical_spacing=0.1
