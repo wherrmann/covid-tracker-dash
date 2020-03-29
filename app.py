@@ -105,16 +105,17 @@ def render_content(tab):
         ])
     elif tab == 'states':
         content = html.Div([
+            html.Label("Axis Type",form="yaxis-type-div"),
             html.Div([
                 dcc.RadioItems(
                     id='yaxis-type',
                     options=[{'label': i, 'value': i} for i in ['Linear', 'Log']],
                     value='Log',
-                    labelStyle={'display': 'inline-block'},
-                    persistence=True
+                    persistence=True,
+                    labelStyle={'display': 'inline-block'}
                 )
             ],
-            style={'width': '48%', 'display': 'inline-block'}),
+            id="yaxis-type-div"),
             dcc.Graph(id='state-growth'),
             html.Br(),
             html.Label("State",form="stateForm",className="app__dropdown"),
