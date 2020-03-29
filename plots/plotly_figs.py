@@ -52,14 +52,7 @@ class PlotlyFigs:
         df['date'] = pd.to_datetime(df['date'],format = '%Y%m%d')
         df = df.sort_values(by='date')
 
-        # posNeg isn't returned by every endpoint
-        if 'posNeg' not in list(df.columns):
-            df['posNeg'] = df['positive'] + df['negative']
-
-        df['new_positive'] = df['positive'].diff()
-        df['new_total'] = df['total'].diff()
-        df['new_posNeg'] = df['posNeg'].diff()
-        df['positive_rate'] = df['new_positive']/df['new_posNeg']
+        df['positive_rate'] = df['positiveIncrease']/df['totalTestResultsIncrease']
 
         fig = make_subplots(
             rows=3,
@@ -75,7 +68,7 @@ class PlotlyFigs:
         fig.add_trace(
             go.Bar(
                 x=df['date'],
-                y=df['new_positive'],
+                y=df['positiveIncrease'],
                 name=""
             ),
             row=1,
@@ -85,7 +78,7 @@ class PlotlyFigs:
             fig.add_trace(
                 go.Bar(
                     x=df['date'],
-                    y=df['new_total'],
+                    y=df['totalTestResultsIncrease'],
                     name=""
                 ),
                 row=2,
@@ -132,10 +125,9 @@ class PlotlyFigs:
         states_pop_df = pd.DataFrame(states_pop['data'])
         df = pd.merge(raw_df,states_pop_df,left_on='state_name',right_on='State')
 
-        df['posNeg'] = df['positive'] + df['negative']
-        df['positive_rate'] = df['positive']/df['posNeg']
+        df['positive_rate'] = df['positive']/df['totalTestResults']
         df['positives_per_hundred_tests'] = df['positive_rate']*100
-        df['tests_per_capita'] = df['total']/df['Population']
+        df['tests_per_capita'] = df['totalTestResults']/df['Population']
         df['positives_per_capita'] = df['positive']/df['Population']
         df['positives_per_million'] = df['positives_per_capita']*1000000
         df['tests_per_million'] = df['tests_per_capita']*1000000
@@ -184,9 +176,9 @@ class PlotlyFigs:
             dcc.Graph(id='graph-map-1',figure=fig1),
             dcc.Graph(id='graph-map-2',figure=fig2),
             dcc.Graph(id='graph-map-3',figure=fig3),
-                html.P(["Note: positive rates are not calculated for states with less than an 'A' ",
-                 dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-grade"),
-                 " Tests administered are not shown for states with less than a 'C'."
-                ])
+            html.P(["Note: positive rates are not calculated for states with less than an 'A' ",
+             dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-grade"),
+             " Tests administered are not shown for states with less than a 'C'."
+            ])
         ])
         return graphs_div
