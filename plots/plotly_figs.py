@@ -182,3 +182,28 @@ class PlotlyFigs:
             ])
         ])
         return graphs_div
+
+    def make_state_growth_plot(self):
+        data = self.get_data('states/daily')
+        for state in data:
+            state['state_name'] = self.state_mapping[state['state']]
+        df = pd.DataFrame(data)
+        df['date'] = pd.to_datetime(df['date'],format = '%Y%m%d')
+        df = df.sort_values(by='date')
+        df['days_since_hundredth_case'] = df[df['positive']>=100].groupby(['state']).cumcount()
+
+        df_non_nulls = df[df['days_since_hundredth_case'].notnull()]
+
+        fig = px.scatter(
+            df_non_nulls,
+            x='days_since_hundredth_case',
+            y='positive',
+            color='state_name',
+            labels = {'days_since_hundredth_case':'Days Since 100th Positive','positive':'Total Positives'},
+            log_y=True
+        )
+
+        for trace in fig.data:
+            trace.update(mode='markers+lines')
+
+        return fig

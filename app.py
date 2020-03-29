@@ -90,6 +90,12 @@ def make_bar_figures(region):
 def make_map_figures():
     return plotly_figs.make_map_figures()
 
+@cache.memoize(timeout=TIMEOUT)
+def make_state_growth_plot():
+    return plotly_figs.make_state_growth_plot()
+
+state_growth_fig = make_state_growth_plot()
+
 @app.callback(Output('tabs-content', 'children'),
               [Input('tabs-covid', 'value')])
 def render_content(tab):
@@ -99,11 +105,22 @@ def render_content(tab):
         ])
     elif tab == 'states':
         content = html.Div([
+            html.Label("Axis Type",form="yaxis-type-div"),
+            html.Div([
+                dcc.RadioItems(
+                    id='yaxis-type',
+                    options=[{'label': i, 'value': i} for i in ['Linear', 'Log']],
+                    value='Log',
+                    persistence=True,
+                    labelStyle={'display': 'inline-block'}
+                )
+            ],
+            id="yaxis-type-div"),
+            dcc.Graph(id='state-growth'),
             html.Br(),
             html.Label("State",form="stateForm",className="app__dropdown"),
             html.Div(
                 [
-
                     dcc.Dropdown(
                         id="state_dropdown",
                         value="NY",
@@ -122,6 +139,15 @@ def render_content(tab):
         return content
     elif tab == 'maps':
         return make_map_figures()
+
+@app.callback(Output("state-growth", "figure"), [Input("yaxis-type", "value")])
+def update_state_growth_fig(value):
+    if value == 'Linear':
+        yaxis_type = 'linear'
+    else:
+        yaxis_type = 'log'
+    state_growth_fig.update_yaxes(type=yaxis_type)
+    return state_growth_fig
 
 @app.callback(Output("state-graphs", "figure"), [Input("state_dropdown", "value")])
 def make_figure(value):
