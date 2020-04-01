@@ -91,10 +91,10 @@ def make_map_figures():
     return plotly_figs.make_map_figures()
 
 @cache.memoize(timeout=TIMEOUT)
-def make_state_growth_plot():
-    return plotly_figs.make_state_growth_plot()
+def make_state_growth_plots():
+    return plotly_figs.make_state_growth_plots()
 
-state_growth_fig = make_state_growth_plot()
+state_growth_fig, state_growth_fig_per_capita = make_state_growth_plots()
 
 @app.callback(Output('tabs-content', 'children'),
               [Input('tabs-covid', 'value')])
@@ -105,19 +105,6 @@ def render_content(tab):
         ])
     elif tab == 'states':
         content = html.Div([
-            html.Label("Axis Type",form="yaxis-type-div"),
-            html.Div([
-                dcc.RadioItems(
-                    id='yaxis-type',
-                    options=[{'label': i, 'value': i} for i in ['Linear', 'Log']],
-                    value='Log',
-                    persistence=True,
-                    labelStyle={'display': 'inline-block'}
-                )
-            ],
-            id="yaxis-type-div"),
-            dcc.Graph(id='state-growth'),
-            html.Br(),
             html.Label("State",form="stateForm",className="app__dropdown"),
             html.Div(
                 [
@@ -134,7 +121,22 @@ def render_content(tab):
             html.P(["Note: positive rates are not calculated for states with less than an 'A' ",
              dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-grade"),
              " Tests administered are not shown for states with less than a 'C'."
-            ])
+            ]),
+            html.Br(),
+            html.H3('State Comparisons'),
+            html.Label("Axis Type",form="yaxis-type-div"),
+            html.Div([
+                dcc.RadioItems(
+                    id='yaxis-type',
+                    options=[{'label': i, 'value': i} for i in ['Linear', 'Log']],
+                    value='Log',
+                    persistence=True,
+                    labelStyle={'display': 'inline-block'}
+                )
+            ],
+            id="yaxis-type-div"),
+            dcc.Graph(id='state-growth'),
+            dcc.Graph(id='state-capita'),
         ])
         return content
     elif tab == 'maps':
@@ -148,6 +150,15 @@ def update_state_growth_fig(value):
         yaxis_type = 'log'
     state_growth_fig.update_yaxes(type=yaxis_type)
     return state_growth_fig
+
+@app.callback(Output("state-capita", "figure"), [Input("yaxis-type", "value")])
+def update_state_growth_fig(value):
+    if value == 'Linear':
+        yaxis_type = 'linear'
+    else:
+        yaxis_type = 'log'
+    state_growth_fig_per_capita.update_yaxes(type=yaxis_type)
+    return state_growth_fig_per_capita
 
 @app.callback(Output("state-graphs", "figure"), [Input("state_dropdown", "value")])
 def make_figure(value):

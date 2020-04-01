@@ -183,19 +183,31 @@ class PlotlyFigs:
         ])
         return graphs_div
 
-    def make_state_growth_plot(self):
+    def make_state_growth_plots(self):
         data = self.get_data('states/daily')
         for state in data:
             state['state_name'] = self.state_mapping[state['state']]
-        df = pd.DataFrame(data)
-        df['date'] = pd.to_datetime(df['date'],format = '%Y%m%d')
+        raw_df = pd.DataFrame(data)
+        raw_df['date'] = pd.to_datetime(raw_df['date'],format = '%Y%m%d')
+
+        # get state population data from census.gov
+        states_pop = self.state_pop
+        states_pop_df = pd.DataFrame(states_pop['data'])
+        df = pd.merge(raw_df,states_pop_df,left_on='state_name',right_on='State')
+
+        df['tests_per_capita'] = df['totalTestResults']/df['Population']
+        df['positives_per_capita'] = df['positive']/df['Population']
+        df['positives_per_million'] = df['positives_per_capita']*1000000
+
         df = df.sort_values(by='date')
         df['days_since_hundredth_case'] = df[df['positive']>=100].groupby(['state']).cumcount()
+        df['days_since_10_per_million'] = df[df['positives_per_million']>=10].groupby(['state']).cumcount()
 
-        df_non_nulls = df[df['days_since_hundredth_case'].notnull()]
+        df_non_nulls_hundredth = df[df['days_since_hundredth_case'].notnull()]
+        df_non_nulls_per_capita = df[df['days_since_10_per_million'].notnull()]
 
         fig = px.scatter(
-            df_non_nulls,
+            df_non_nulls_hundredth,
             x='days_since_hundredth_case',
             y='positive',
             color='state_name',
@@ -206,4 +218,16 @@ class PlotlyFigs:
         for trace in fig.data:
             trace.update(mode='markers+lines')
 
-        return fig
+        fig_per_capita = px.scatter(
+            df_non_nulls_per_capita,
+            x='days_since_10_per_million',
+            y='positives_per_million',
+            color='state_name',
+            labels = {'days_since_10_per_million':'Days Since 10 Positive per Million','positives_per_million':'Positives per Million People'},
+            log_y=True
+        )
+
+        for trace in fig_per_capita.data:
+            trace.update(mode='markers+lines')
+
+        return fig, fig_per_capita
