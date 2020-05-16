@@ -14,7 +14,7 @@ FIG_FONT_DICT = {
     'color' : "#222"
 }
 
-BASE_API_URL = 'https://covidtracking.com/api/'
+BASE_API_URL = 'https://covidtracking.com/api/v1/'
 
 class PlotlyFigs:
 
@@ -41,18 +41,26 @@ class PlotlyFigs:
         """
 
         if region == 'US':
-            data = self.get_data('us/daily')
-            data_grade = 'A'
+            data = self.get_data('states/daily.json')
         else:
-            data = self.get_data('states/daily?state={}'.format(region))
-            data_grade = self.get_data('states?state={}'.format(region))['grade']
+            data = self.get_data('states/{}/daily.json'.format(region))
             region = self.state_mapping[region]
 
         df = pd.DataFrame(data)
         df['date'] = pd.to_datetime(df['date'],format = '%Y%m%d')
+        df = df[df['date']>='2020-03-01']
         df = df.sort_values(by='date')
 
-        df['positive_rate'] = df['positiveIncrease']/df['totalTestResultsIncrease']
+        if region == 'US':
+            total_df = df.groupby('date').sum().reset_index()
+            test_df = df[df['dataQualityGrade']!='D'].groupby('date').sum().reset_index()
+            positive_rate_df = df[df['dataQualityGrade']=='A'].groupby('date').sum().reset_index()
+        else:
+            total_df = df
+            test_df = df[df['dataQualityGrade']!='D']
+            positive_rate_df = df[df['dataQualityGrade']=='A']
+
+        positive_rate_df['positive_rate'] = positive_rate_df['positiveIncrease']/positive_rate_df['totalTestResultsIncrease']
 
         fig = make_subplots(
             rows=3,
@@ -67,33 +75,31 @@ class PlotlyFigs:
         )
         fig.add_trace(
             go.Bar(
-                x=df['date'],
-                y=df['positiveIncrease'],
+                x=total_df['date'],
+                y=total_df['positiveIncrease'],
                 name=""
             ),
             row=1,
             col=1
         )
-        if data_grade in ['A','B','C']:
-            fig.add_trace(
-                go.Bar(
-                    x=df['date'],
-                    y=df['totalTestResultsIncrease'],
-                    name=""
-                ),
-                row=2,
-                col=1
-            )
-        if data_grade == 'A':
-            fig.add_trace(
-                go.Bar(
-                    x=df['date'],
-                    y=df['positive_rate'],
-                    name=""
-                ),
-                row=3,
-                col=1
-            )
+        fig.add_trace(
+            go.Bar(
+                x=test_df['date'],
+                y=test_df['totalTestResultsIncrease'],
+                name=""
+            ),
+            row=2,
+            col=1
+        )
+        fig.add_trace(
+            go.Bar(
+                x=positive_rate_df['date'],
+                y=positive_rate_df['positive_rate'],
+                name=""
+            ),
+            row=3,
+            col=1
+        )
         fig.update_yaxes(title_text="Confirmed Cases", row=1, col=1)
         fig.update_yaxes(title_text="Tests Administered", row=2, col=1)
         fig.update_yaxes(title_text="Positive Test Rate", tickformat = ',.0%', row=3, col=1)
@@ -111,7 +117,7 @@ class PlotlyFigs:
          - Tests per capita
          - Positive test rate
         """
-        data = self.get_data('states')
+        data = self.get_data('states/daily.json')
         for state in data:
             state['state_name'] = self.state_mapping[state['state']]
         raw_df = pd.DataFrame(data)
@@ -125,12 +131,20 @@ class PlotlyFigs:
         states_pop_df = pd.DataFrame(states_pop['data'])
         df = pd.merge(raw_df,states_pop_df,left_on='state_name',right_on='State')
 
-        df['positive_rate'] = df['positive']/df['totalTestResults']
-        df['positives_per_hundred_tests'] = df['positive_rate']*100
-        df['tests_per_capita'] = df['totalTestResults']/df['Population']
-        df['positives_per_capita'] = df['positive']/df['Population']
-        df['positives_per_million'] = df['positives_per_capita']*1000000
-        df['tests_per_million'] = df['tests_per_capita']*1000000
+        # totals
+        total_df = df.groupby(['state_name','Population']).sum().reset_index()
+        total_df['positives_per_capita'] = total_df['positive']/total_df['Population']
+        total_df['positives_per_million'] = total_df['positives_per_capita']*1000000
+
+        # tests
+        tests_df = df[df['dataQualityGrade']!='A'].groupby(['state_name','Population']).sum().reset_index()
+        tests_df['tests_per_capita'] = tests_df['totalTestResults']/tests_df['Population']
+        tests_df['tests_per_million'] = tests_df['tests_per_capita']*1000000
+
+        # positive rate
+        positive_rate_df = df[df['dataQualityGrade']=='A'].groupby(['state_name','Population']).sum().reset_index()
+        positive_rate_df['positive_rate'] = positive_rate_df['positive']/positive_rate_df['totalTestResults']
+        positive_rate_df['positives_per_hundred_tests'] = positive_rate_df['positive_rate']*100
 
         layout_dict = {'font': FIG_FONT_DICT}
 
@@ -146,7 +160,7 @@ class PlotlyFigs:
             'height' : 600
         }
 
-        fig1 = px.choropleth_mapbox(df[df['positives_per_million'].notna()],
+        fig1 = px.choropleth_mapbox(total_df[total_df['positives_per_million'].notna()],
             title ="Confirmed Cases per Million People",
             color="positives_per_million",
             **standard_choropleth_mapbox_args
@@ -154,8 +168,7 @@ class PlotlyFigs:
         fig1.update(
             layout=layout_dict
         )
-        nonnull_df = df[df['tests_per_million'].notna()]
-        fig2 = px.choropleth_mapbox(nonnull_df[df['grade']!='D'],
+        fig2 = px.choropleth_mapbox(tests_df[tests_df['tests_per_million'].notna()],
             title ="Tests Per Million People",
             color="tests_per_million",
             **standard_choropleth_mapbox_args
@@ -163,8 +176,7 @@ class PlotlyFigs:
         fig2.update(
             layout=layout_dict
         )
-        nonnull_df = df[df['positives_per_hundred_tests'].notna()]
-        fig3 = px.choropleth_mapbox(nonnull_df[df['grade']=='A'],
+        fig3 = px.choropleth_mapbox(positive_rate_df[positive_rate_df['positives_per_hundred_tests'].notna()],
             title ="Positives per Hundred Tests Administered",
             color="positives_per_hundred_tests",
             **standard_choropleth_mapbox_args
@@ -176,15 +188,15 @@ class PlotlyFigs:
             dcc.Graph(id='graph-map-1',figure=fig1),
             dcc.Graph(id='graph-map-2',figure=fig2),
             dcc.Graph(id='graph-map-3',figure=fig3),
-            html.P(["Note: positive rates are not calculated for states with less than an 'A' ",
+            html.P(["Note: positive rates are not calculated for data with less than an 'A' ",
              dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-grade"),
-             " Tests administered are not shown for states with less than a 'C'."
+             " Tests administered are not shown for data with less than a 'C'."
             ])
         ])
         return graphs_div
 
     def make_state_growth_plots(self):
-        data = self.get_data('states/daily')
+        data = self.get_data('states/daily.json')
         for state in data:
             state['state_name'] = self.state_mapping[state['state']]
         raw_df = pd.DataFrame(data)
