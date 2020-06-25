@@ -43,7 +43,8 @@ class PlotlyFigs:
         if region == 'US':
             data = self.get_data('states/daily.json')
         else:
-            data = self.get_data('states/{}/daily.json'.format(region))
+            lowercase_state = region.lower()
+            data = self.get_data('states/{}/daily.json'.format(lowercase_state))
             region = self.state_mapping[region]
 
         df = pd.DataFrame(data)
