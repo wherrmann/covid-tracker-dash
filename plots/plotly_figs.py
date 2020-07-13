@@ -54,12 +54,10 @@ class PlotlyFigs:
 
         if region == 'US':
             total_df = df.groupby('date').sum().reset_index()
-            test_df = df[df['dataQualityGrade']!='D'].groupby('date').sum().reset_index()
-            positive_rate_df = df[df['dataQualityGrade']=='A'].groupby('date').sum().reset_index()
+            positive_rate_df = df[df.dataQualityGrade.isin(['A','A+'])].groupby('date').sum().reset_index()
         else:
             total_df = df
-            test_df = df[df['dataQualityGrade']!='D']
-            positive_rate_df = df[df['dataQualityGrade']=='A']
+            positive_rate_df = df[df.dataQualityGrade.isin(['A','A+'])]
 
         positive_rate_df['positive_rate'] = positive_rate_df['positiveIncrease']/positive_rate_df['totalTestResultsIncrease']
 
@@ -79,7 +77,7 @@ class PlotlyFigs:
         fig.add_trace(
             go.Bar(
                 x=total_df['date'],
-                y=total_df['positiveIncrease'],
+                y=total_df['positiveIncrease'].clip(lower=0),
                 name=""
             ),
             row=1,
@@ -87,8 +85,8 @@ class PlotlyFigs:
         )
         fig.add_trace(
             go.Bar(
-                x=test_df['date'],
-                y=test_df['totalTestResultsIncrease'],
+                x=total_df['date'],
+                y=total_df['totalTestResultsIncrease'].clip(lower=0),
                 name=""
             ),
             row=2,
@@ -96,8 +94,8 @@ class PlotlyFigs:
         )
         fig.add_trace(
             go.Bar(
-                x=positive_rate_df['date'],
-                y=positive_rate_df['hospitalizedIncrease'],
+                x=total_df['date'],
+                y=total_df['hospitalizedIncrease'].clip(lower=0),
                 name=""
             ),
             row=3,
@@ -105,8 +103,8 @@ class PlotlyFigs:
         )
         fig.add_trace(
             go.Bar(
-                x=positive_rate_df['date'],
-                y=positive_rate_df['deathIncrease'],
+                x=total_df['date'],
+                y=total_df['deathIncrease'].clip(lower=0),
                 name=""
             ),
             row=4,
@@ -158,14 +156,11 @@ class PlotlyFigs:
         total_df = df.groupby(['state_name','Population']).sum().reset_index()
         total_df['positives_per_capita'] = total_df['positive']/total_df['Population']
         total_df['positives_per_million'] = total_df['positives_per_capita']*1000000
-
-        # tests
-        tests_df = df[df['dataQualityGrade']!='A'].groupby(['state_name','Population']).sum().reset_index()
-        tests_df['tests_per_capita'] = tests_df['totalTestResults']/tests_df['Population']
-        tests_df['tests_per_million'] = tests_df['tests_per_capita']*1000000
+        total_df['tests_per_capita'] = total_df['totalTestResults']/total_df['Population']
+        total_df['tests_per_million'] = total_df['tests_per_capita']*1000000
 
         # positive rate
-        positive_rate_df = df[df['dataQualityGrade']=='A'].groupby(['state_name','Population']).sum().reset_index()
+        positive_rate_df = df[df.dataQualityGrade.isin(['A','A+'])].groupby(['state_name','Population']).sum().reset_index()
         positive_rate_df['positive_rate'] = positive_rate_df['positive']/positive_rate_df['totalTestResults']
         positive_rate_df['positives_per_hundred_tests'] = positive_rate_df['positive_rate']*100
 
@@ -191,7 +186,7 @@ class PlotlyFigs:
         fig1.update(
             layout=layout_dict
         )
-        fig2 = px.choropleth_mapbox(tests_df[tests_df['tests_per_million'].notna()],
+        fig2 = px.choropleth_mapbox(total_df[total_df['tests_per_million'].notna()],
             title ="Tests Per Million People",
             color="tests_per_million",
             **standard_choropleth_mapbox_args
@@ -212,8 +207,7 @@ class PlotlyFigs:
             dcc.Graph(id='graph-map-2',figure=fig2),
             dcc.Graph(id='graph-map-3',figure=fig3),
             html.P(["Note: positive rates are not calculated for data with less than an 'A' ",
-             dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-grade"),
-             " Tests administered are not shown for data with less than a 'C'."
+             dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-grade")
             ])
         ])
         return graphs_div

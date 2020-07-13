@@ -103,8 +103,7 @@ def render_content(tab):
         return html.Div([
             dcc.Graph(id='graph-us',figure=make_bar_figures('US')),
             html.P(["Note: positive rates are a cumulative figure calculated from states with an 'A' ",
-             dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-grade"),
-             " Tests administered are a sum from states with a 'C' or better."
+             dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-grade")
             ]),
         ])
     elif tab == 'states':
@@ -123,8 +122,7 @@ def render_content(tab):
             ),
             dcc.Graph(id='state-graphs'),
             html.P(["Note: positive rates are not calculated for data with less than an 'A' ",
-             dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-grade"),
-             " Tests administered are not shown for data with less than a 'C'."
+             dcc.Link('data quality rating.', href="https://covidtracking.com/about-tracker/#data-quality-grade")
             ]),
             html.Br(),
             html.H3('State Comparisons'),
