@@ -64,15 +64,17 @@ class PlotlyFigs:
         positive_rate_df['positive_rate'] = positive_rate_df['positiveIncrease']/positive_rate_df['totalTestResultsIncrease']
 
         fig = make_subplots(
-            rows=3,
+            rows=5,
             cols=1,
             subplot_titles=(
                 "Daily New Cases - {}".format(region),
                 "Daily New Tests Administered - {}".format(region),
+                "Daily New Hospitalizations - {}".format(region),
+                "Daily New Deaths - {}".format(region),
                 "Daily Positive Test Rate - {}".format(region)
             ),
             x_title="Date",
-            vertical_spacing=0.1
+            vertical_spacing=0.05
         )
         fig.add_trace(
             go.Bar(
@@ -95,19 +97,39 @@ class PlotlyFigs:
         fig.add_trace(
             go.Bar(
                 x=positive_rate_df['date'],
-                y=positive_rate_df['positive_rate'],
+                y=positive_rate_df['hospitalizedIncrease'],
                 name=""
             ),
             row=3,
             col=1
         )
+        fig.add_trace(
+            go.Bar(
+                x=positive_rate_df['date'],
+                y=positive_rate_df['deathIncrease'],
+                name=""
+            ),
+            row=4,
+            col=1
+        )
+        fig.add_trace(
+            go.Bar(
+                x=positive_rate_df['date'],
+                y=positive_rate_df['positive_rate'],
+                name=""
+            ),
+            row=5,
+            col=1
+        )
         fig.update_yaxes(title_text="Confirmed Cases", row=1, col=1)
         fig.update_yaxes(title_text="Tests Administered", row=2, col=1)
-        fig.update_yaxes(title_text="Positive Test Rate", tickformat = ',.0%', row=3, col=1)
+        fig.update_yaxes(title_text="Confirmed Hospitalizations", row=3, col=1)
+        fig.update_yaxes(title_text="Confirmed Deaths", row=4, col=1)
+        fig.update_yaxes(title_text="Positive Test Rate", tickformat = ',.0%', row=5, col=1)
         fig.update_layout(
             font=FIG_FONT_DICT,
             showlegend=False,
-            height = 1400
+            height = 2400
         )
         return fig
 
